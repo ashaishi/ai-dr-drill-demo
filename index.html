@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI DR Drill Readiness – Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f5;--panel:#fff;--ink:#1b2733;--mute:#5d6b7a;--line:#d5dce4;--pass:#15803d;--fail:#b42318;--run:#4338ca;--dc:#0f766e;--dr:#4338ca;--wait:#9aa7b4;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141b23;--panel:#1c2530;--ink:#e6ebf0;--mute:#97a5b3;--line:#2f3b48;--pass:#4ade80;--fail:#f87171;--run:#a5b4fc;--dc:#5eead4;--dr:#a5b4fc;--wait:#64727f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141b23;--panel:#1c2530;--ink:#e6ebf0;--mute:#97a5b3;--line:#2f3b48;--pass:#4ade80;--fail:#f87171;--run:#a5b4fc;--dc:#5eead4;--dr:#a5b4fc;--wait:#64727f;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:860px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:clamp(26px,5vw,38px);line-height:1.1;margin:0 0 8px;letter-spacing:-.02em;font-weight:600}
+.sub{color:var(--mute);margin:0 0 18px;max-width:60ch}
+.ctl{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:26px}
+button{font:inherit;font-weight:500;border:1px solid var(--ink);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:6px;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible{outline:3px solid var(--run);outline-offset:2px}
+label{color:var(--mute);display:flex;gap:6px;align-items:center;cursor:pointer}
+.track{list-style:none;margin:0;padding:0 0 0 22px;border-left:2px solid var(--line)}
+.stage{position:relative;margin:0 0 26px;padding:0 0 0 22px;opacity:.5;transition:opacity .3s}
+.stage.active,.stage.done{opacity:1}
+.stage::before{content:attr(data-n);position:absolute;left:-44px;top:0;width:44px;height:26px;display:grid;place-items:center;font-weight:600;font-size:13px;background:var(--bg);color:var(--mute)}
+.stage.active::before{color:var(--run)}.stage.done::before{color:var(--pass)}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+h2{font-size:19px;margin:0;font-weight:600}
+.chip{font-size:13px;color:var(--mute);border:1px solid var(--line);border-radius:99px;padding:2px 10px;background:var(--panel)}
+.active .chip{color:var(--run);border-color:var(--run)}.done .chip{color:var(--pass);border-color:var(--pass)}
+.rows{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.rows li{display:flex;gap:12px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.rows li:first-child{border-top:0}
+.rows div{flex:1;min-width:0}.rows b{display:block;font-weight:500}.rows span{color:var(--mute);font-size:13.5px}
+.ic{width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--wait);display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:700;line-height:1}
+li[data-s=run] .ic{border-color:var(--run);border-top-color:transparent;animation:sp .7s linear infinite}
+li[data-s=pass] .ic{background:var(--pass);border-color:var(--pass);color:var(--panel)}li[data-s=pass] .ic::after{content:"✓"}
+li[data-s=fail] .ic{background:var(--fail);border-color:var(--fail);color:var(--panel)}li[data-s=fail] .ic::after{content:"✕"}
+li[data-s=wait] .ic{border-color:var(--run)}li[data-s=wait] .ic::after{content:"…";color:var(--run)}
+li[data-s=pass] span.st,li[data-s=fail] span.st{font-weight:500}
+li[data-s=fail] span{color:var(--fail)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ai{margin-top:8px;font-size:14px;color:var(--mute);min-height:20px;padding-left:12px;border-left:3px solid var(--run)}
+.ai:empty{display:none}
+.sites{display:grid;grid-template-columns:1fr 140px 1fr;gap:12px;align-items:center;margin:12px 0}
+.site{background:var(--panel);border:2px solid var(--line);border-radius:8px;padding:14px;transition:border-color .5s}
+.site b{font-size:22px;display:block}.site small{color:var(--mute)}.site em{display:block;font-style:normal;margin-top:6px;font-weight:600;color:var(--mute)}
+#dc.on{border-color:var(--dc)}#dc.on em{color:var(--dc)}#dr.on{border-color:var(--dr)}#dr.on em{color:var(--dr)}
+.lnk{text-align:center;font-size:13px;color:var(--mute)}
+.bar{height:10px;border-radius:99px;background:var(--dc);overflow:hidden;margin-bottom:6px;direction:rtl}
+.bar i{display:block;height:100%;width:0;background:var(--dr);transition:width .6s;float:right}
+.done-banner{display:none;margin-top:14px;padding:16px;border-radius:8px;background:var(--panel);border:2px solid var(--pass)}
+.done-banner.show{display:block}.done-banner b{font-size:20px}.done-banner p{margin:4px 0 0;color:var(--mute)}
+.foot{color:var(--mute);font-size:13px;margin-top:30px}
+@media (max-width:620px){.sites{grid-template-columns:1fr}.lnk{padding:4px 0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}li[data-s=run] .ic{animation-duration:2s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>AI DR drill readiness</h1>
+<p class="sub">A simulated disaster recovery drill for a business application: readiness checks, two-person approval, a CI/CD rollout to DR, then failover from DC to DR.</p>
+<div class="ctl">
+<button id="run">Start readiness drill</button>
+<button id="reset" class="ghost">Reset</button>
+<label><input type="checkbox" id="fail"> Inject a failure</label>
+<label><input type="checkbox" id="auto"> Auto-approve</label>
+</div>
+
+<ol class="track">
+<li class="stage" id="s1" data-n="1"><div class="head"><h2>Readiness checks</h2><span class="chip">Waiting</span></div><ul class="rows"></ul><div class="ai"></div></li>
+<li class="stage" id="s2" data-n="2"><div class="head"><h2>Approval gate</h2><span class="chip">Waiting</span></div><ul class="rows"></ul><div class="ai"></div></li>
+<li class="stage" id="s3" data-n="3"><div class="head"><h2>Pipeline and DR environment</h2><span class="chip">Waiting</span></div><ul class="rows"></ul><div class="ai"></div></li>
+<li class="stage" id="s4" data-n="4"><div class="head"><h2>Failover: DC to DR</h2><span class="chip">Waiting</span></div>
+<div class="sites">
+<div class="site on" id="dc"><b>DC</b><small>Primary data centre</small><em>Active</em></div>
+<div class="lnk"><div class="bar"><i id="tr"></i></div><span id="pct">Traffic: DC 100% · DR 0%</span></div>
+<div class="site" id="dr"><b>DR</b><small>Recovery site</small><em>Standby</em></div>
+</div>
+<ul class="rows"></ul>
+<div class="done-banner" id="fin"><b>DC to DR complete</b><p>DR is now serving production traffic. RTO 4m 12s · RPO 3s (simulated figures).</p></div>
+</li>
+</ol>
+<p class="foot">Simulation only. No real systems, data or credentials are used. All results are scripted for demonstration.</p>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const S1=[["Code sync","GitHub main and DR mirror on commit a3f9c21"],["Database sync","Replication lag 4s (limit 30s)"],["Connectivity","DC–DR link 12 ms, 0% packet loss, tunnels up"],["Purging","Retention job finished, 0 stale batches"],["Config and secrets","Vault keys and environment configs match"],["Certificates and DNS","TLS valid for 142 days, GSLB TTL 60s"],["Backup restore point","Latest backup verified at 06:00"]];
+const S2=[["Application owner","Confirms application readiness"],["DR and change manager","Confirms the change window and business impact"]];
+const S3=[["Git push","drill/dr-2026 merged to main"],["Jenkins build and tests","412 unit and 38 integration tests passed"],["Docker image","app-service:2026.10.27 pushed to registry"],["Kubernetes deploy on DR","12 of 12 pods Ready, rollout complete"],["Health checks","/health returned 200 on all services"],["Application sync","DC and DR run the same release"],["Database sync","Replica in sync, lag 3s"]];
+const S4=[["Freeze new writes at DC","Queue drained, 0 in-flight transactions"],["Final database sync","Last log shipped, RPO 3s"],["Promote DR database","DR primary is writable"],["Switch traffic DC to DR","GSLB weights shifting"],["Smoke test on DR","Login and key transaction checks passed"]];
+let rid=0;
+const row=(ul,t,d)=>{const li=document.createElement("li");li.dataset.s="";li.innerHTML=`<i class="ic"></i><div><b>${t}</b><span>${d}</span></div>`;ul.appendChild(li);return li};
+const st=(li,s,d)=>{li.dataset.s=s;if(d)li.querySelector("span").textContent=d};
+const stage=(n,cls,txt)=>{const e=$("#s"+n);e.classList.remove("active","done");if(cls)e.classList.add(cls);e.querySelector(".chip").textContent=txt};
+const ai=(n,t)=>{const e=$("#s"+n+" .ai");if(e)e.textContent=t};
+function build(){[[1,S1],[2,S2],[3,S3],[4,S4]].forEach(([n,a])=>{const ul=$("#s"+n+" .rows");ul.innerHTML="";a.forEach(r=>row(ul,r[0],r[1]));stage(n,"","Waiting");ai(n,"")});
+$("#tr").style.width="0";$("#pct").textContent="Traffic: DC 100% · DR 0%";$("#dc").classList.add("on");$("#dr").classList.remove("on");
+$("#dc em").textContent="Active";$("#dr em").textContent="Standby";$("#fin").classList.remove("show");$("#run").disabled=false}
+const wait=async ms=>{const id=rid;await new Promise(r=>setTimeout(r,ms));if(id!==rid)throw 0};
+const rows=n=>[...document.querySelectorAll("#s"+n+" .rows li")];
+async function auto(n,A){const id=rid;const L=rows(n);for(let i=0;i<L.length;i++){st(L[i],"run");await wait(900);
+ if(A&&A[i])await A[i](L[i]);else st(L[i],"pass");await wait(250)}}
+async function drill(){
+build();const id=++rid;$("#run").disabled=true;
+try{
+ stage(1,"active","Running");ai(1,"AI is scanning DC and DR for drift…");
+ const inj=$("#fail").checked;
+ await auto(1,inj?{1:async li=>{st(li,"fail","Replication lag 94s (limit 30s)");
+   ai(1,"AI: a long batch job is causing lag. Throttling the batch and re-checking.");await wait(2200);
+   st(li,"run");await wait(1300);st(li,"pass","Replication lag 6s after throttling batch")}}:null);
+ stage(1,"done","7 of 7 passed");ai(1,inj?"AI: 6 of 7 passed first time. Database sync was auto-remediated and re-verified. Ready for approval.":"AI: all checks passed. DC and DR are in sync. Ready for approval.");
+ await wait(900);
+ stage(2,"active","Awaiting 2 approvals");ai(2,"Two different approvers are required before the real drill can start.");
+ const L=rows(2);
+ await Promise.all(L.map((li,i)=>new Promise(res=>{st(li,"wait");const b=document.createElement("button");b.textContent="Approve";b.className="ghost";li.appendChild(b);
+  const ok=()=>{if(id!==rid)return;b.remove();st(li,"pass",["Approved by application owner","Approved by DR and change manager"][i]);res()};
+  b.onclick=ok;if($("#auto").checked)setTimeout(ok,1100+i*1100)})));
+ stage(2,"done","2 of 2 approved");ai(2,"Gate cleared. Change record opened for the drill window.");
+ await wait(900);
+ stage(3,"active","Running");ai(3,"Pushing the DR build through CI/CD…");
+ await auto(3);
+ stage(3,"done","7 of 7 passed");ai(3,"AI: DR environment is healthy and matches production. Safe to fail over.");
+ await wait(900);
+ stage(4,"active","Failing over");
+ const F=rows(4);const tr=$("#tr"),pct=$("#pct");
+ await auto(4,{3:async li=>{for(const p of [25,50,75,100]){tr.style.width=p+"%";pct.textContent=`Traffic: DC ${100-p}% · DR ${p}%`;await wait(650)}
+   st(li,"pass","100% of traffic now on DR");$("#dc em").textContent="Standby";$("#dc").classList.remove("on");$("#dr em").textContent="Active";$("#dr").classList.add("on")}});
+ stage(4,"done","Complete");$("#fin").classList.add("show");$("#run").disabled=false;$("#run").textContent="Run again";
+}catch(e){if(e!==0)throw e}}
+$("#run").onclick=drill;
+$("#reset").onclick=()=>{rid++;$("#run").textContent="Start readiness drill";build()};
+build();
+</script>
+</body>
+</html>
